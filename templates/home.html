@@ -16,7 +16,7 @@
   <h1>Hello, World!</h1>
     <p>Welcome to Item Analysis page! This is designed by Seyyed Mousavi!</p>
     <div class="container">
-      <h1>Upload you Excel file</h1>
+      <h1>Upload your Excel file</h1>
 
       <form method="POST" enctype="multipart/form-data">
         <input type="file" name="file" accept=".xlsx,.xls" required>
@@ -61,6 +61,18 @@
         <img alt="Histogram" src="data:image/png;base64,{{ plot_url }}">
       </div>
     {% endif %}
+
+    
+    <div class="container mt-4">
+      {% if difficulty_index_table %}
+        <h3>Difficulty Index</h3>
+        {{ difficulty_index_table | safe }}
+        {% endif %}
+      {% if discrimination_index_table %}
+        <h3>Discrimination Index</h3>
+        {{ discrimination_index_table | safe }}
+        {% endif %}
+    </div>
   </div>
 </body>
 </html>

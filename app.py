@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import math
 import io
 import base64
 
@@ -21,6 +22,8 @@ def create_app():
       hist_plot_url = None
       error_hist = None
       stats = None
+      difficulty_index_table = None
+      discrimination_index_table = None
       error = None
 
       #This block runs only if the form is submitted (i.e., a POST request).
@@ -49,6 +52,8 @@ def create_app():
             if error_hist:
                 error_messages.append(error_hist)
 
+            difficulty_index_table, discrimination_index_table = calculate_dif_Disc_indices(df)
+
             #Combining errors separated by a new line
             if error_messages:
               error = " <br> ".join(error_messages)
@@ -56,7 +61,7 @@ def create_app():
           except Exception as e:
             error = f"Error processing file: {e}"
 
-      return render_template('home.html', plot_url=hist_plot_url, error=error, stats=stats)
+      return render_template('home.html', stats=stats, plot_url=hist_plot_url, difficulty_index_table=difficulty_index_table, discrimination_index_table=discrimination_index_table , error=error)
 
 
 
@@ -154,6 +159,65 @@ def create_app():
         "mode": ", ".join(map(str, mode_vals)) if mode_vals else None,
       }
       return stats, None
+
+
+
+
+    #helper functions
+    def interpret_difficulty_index(value):
+      if value >= 0.91:
+          return 'Very Easy'
+      elif 0.76 <= value < 0.91:
+          return 'Easy'
+      elif 0.26 <= value < 0.76:
+          return 'Moderate(Average)'
+      elif 0.11 <= value < 0.26:
+          return 'difficult'
+      else:
+          return 'Very Difficult'
+
+    def interpret_discrimination_index(value):
+      if value >= 0.40:
+          return 'Very Good'
+      elif 0.30 <= value < 0.40:
+          return 'Reasonably Good'
+      elif 0.20 <= value < 0.30:
+          return 'Marginal Item'
+      else:
+          return 'Poor item'
+
+
+    def calculate_dif_Disc_indices(df: pd.DataFrame, round_to: int = 2):
+      #Sort the dataframe
+      df_sorted_des = df.sort_values(by=df.columns[-1], ascending=False)
+      #Calculate 27 precent top and bottom
+      n = len(df)
+      _27percent = math.ceil(n * 0.27)
+      top_27 = df_sorted_des.head(_27percent)
+      bottom_27 = df_sorted_des.tail(_27percent)
+
+      #Get the column names of the numeric type
+      numeric_cols = df.select_dtypes(include='number').columns
+
+      #Computing Difficulty Index
+      difficulty_index = (top_27[numeric_cols].sum() + bottom_27[numeric_cols].sum()) / (2 * _27percent)
+
+      difficulty_index = difficulty_index.round(round_to).to_frame(name='Difficulty Index').iloc[:-1, :]
+
+      difficulty_index['Interpretation'] = difficulty_index['Difficulty Index'].apply(interpret_difficulty_index)
+
+      #computing Discrimination Index
+
+      discrimination_index = (top_27[numeric_cols].sum() - bottom_27[numeric_cols].sum()) / _27percent
+
+      discrimination_index = discrimination_index.round(round_to).to_frame(name='Discrimination Index').iloc[:-1, :]
+      
+      discrimination_index['Interpretation'] = discrimination_index['Discrimination Index'].apply(interpret_discrimination_index)
+
+      diff_index_table = difficulty_index.to_html(classes='table table-bordered', index=True)
+      disc_index_table = discrimination_index.to_html(classes='table table-bordered', index=True)
+
+      return diff_index_table, disc_index_table
 
 
     return app
